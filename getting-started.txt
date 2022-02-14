@@ -1,13 +1,5 @@
 <?php
 
-/**
- * Please fix the items marked with "@TODO" in this class.
- *
- * Follow the https://www.php-fig.org/psr/psr-2/ coding style guide.
- *
- * One exception to PSR-2: opening braces MUST always be on the same line
- * for classes, methods, functions, and control structures
- */
 class Singleton {
     /**
      * holds single instance of the class.
