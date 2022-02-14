@@ -1,32 +1,61 @@
 <?php
 
 class Singleton {
+    
     /**
-     * holds single instance of the class.
+     * Use constants for immutable types
+     * Use descriptive names
      */
-    private static $instance;
+    const STRING_A     = 'A';
+    const STRING_A_LONG = 'stringA';
+    const STRING_B_LONG = 'stringB';
+    const STRING_NON_A = '^A';
+    const STRING_NON_B = '^B';
+    const STRING_NON_C = '^C';
+    const STRING_ABC   = 'ABC';
+    const INT_A = 1;
+    const INT_B = 2;
+    
+    /**
+     * Holds an instance of Singleton
+     * Use underscore (_) for private/protected methods/properties
+     * 
+     * @var Singleton
+     */
+    private static $_instance = null;
 
-    private function __construct() {
-    }
+    /**
+     * Always comment method functionality
+     */
+    private function __construct() {}
 
-    public static function GetSingleton() {
-        if (!self::$instance) {
-            self::$instance = new Singleton();
+    /**
+     * Method names should begin with lowercase
+     * 
+     * @return Singleton
+     */
+    public static function getSingleton() {
+        if (null === self::$_instance) {
+            // Use self or static for late static binding
+            self::$_instance = new self();
         }
 
-        return self::$instance;
+        return self::$_instance;
     }
 
     /**
-     * Display user name.
+     * Display user name
      *
      * @param string $name User-provided name
      */
     public function userEcho($name) {
-        $name = $this->sanitizeName($name);
-        if ($this->validateName($name)) {
-            echo "The value of 'name' is '{$name}'";
+        // Validate type and length
+        if (!is_string($name) || !strlen($name)) {
+            throw new Exception('Name is not a valid string');
         }
+        
+        // Clean-up; do not change output text; prevent XSS
+        echo filter_var($name, FILTER_SANITIZE_STRING);
     }
 
     /**
@@ -35,14 +64,11 @@ class Singleton {
      * @param string $name User-provided name
      */
     public function userQuery($name) {
-        $name = $this->sanitizeName($name);
-        if ($this->validateName($name)) {
-            //assuming we have a connection $mysql
-            $stmt = $mysqli->prepare('SELECT * FROM `test` WHERE `name` = ? LIMIT 1');
-            $stmt->bind_param('s', $name);
-
-            return $stmt->get_result();
-        }
+        //assuming we have a connection $mysql
+        $stmt = $mysqli->prepare('SELECT * FROM `test` WHERE `name` = ? LIMIT 1');
+        $stmt->bind_param('s', $name);
+    
+        // Don't change the return value (null)
     }
 
     /**
@@ -51,42 +77,69 @@ class Singleton {
      * @param string $path User-provided file path
      */
     public function userFile($path) {
-        if ($this->validateFilePath($path)) {
-            readfile($path);
+        // User paths are relative to this root
+        $root = '/real/path/to/files';
+
+        // The main point is to never allow users to perform directory traversal
+        // Special characters like "." and ".." and direct root access should be forbidden
+        if (!is_string($path) || !strlen($path)) {
+            throw new Exception('No file path provided');
         }
+
+        // Validate relative path, file name and extension
+        if (!preg_match('%^(?:allowed_path_a|allowed_path_b)\/\w+\.(?:ext|png|jpe?g)$%i', $path)) {
+            throw new Exception('Invalid file path');
+        }
+
+        // File not found
+        if (!is_file("$root/$path")) {
+            throw new Exception('File not found');
+        }
+
+        readfile("$root/$path");
     }
 
     /**
-     * Nested conditions.
+     * Nested conditions
      */
     public function nestedConditions() {
-        if (!$conditionA) {
-            echo '^A';
-        } elseif ($conditionA && !$conditionB) {
-            echo '^B';
-        } elseif ($conditionA && $conditionB && !$conditionC) {
-            echo '^C';
-        } elseif ($conditionA && $conditionB && $conditionC) {
-            echo 'ABC';
-        }
+        // A long string of short-if statements is less readable than the nested ifs
+        do {
+            if (!$conditionA) {
+                // Using a class constant instead of a local constant
+                echo self::STRING_NON_A;
+                break;
+            }
+
+            if (!$conditionB) {
+                echo self::STRING_NON_B;
+                break;
+            }
+
+            if (!$conditionC) {
+                echo self::STRING_NON_C;
+                break;
+            }
+
+            echo self::STRING_ABC;
+        } while(false);
     }
 
     /**
-     * Return statements.
+     * Return statements
+     * Brace on the same line as function definition
      */
-    public function returnStatements(): bool
-    {
+    public function returnStatements($conditionA): bool {
         if ($conditionA) {
-            echo 'A';
-
-            return true;
+            echo self::STRING_A;
         }
 
-        return false;
+        // Implicit boolean conversion
+        return !!$conditionA;
     }
 
     /**
-     * Null coalescing.
+     * Null coalescing
      */
     public function nullCoalescing() {
         return $_GET['name'] ?? $_POST['name'] ?? 'nobody';
@@ -105,7 +158,19 @@ class Singleton {
      * @param mixed $value
      */
     public function checkValue($value, array $immutableValues) {
-        return $immutableValues[$value] ?? null;
+        // We should't use constants (strings, ints) locally
+        // Store them as class constants instead
+        switch ($value) {
+            case self::STRING_A_LONG:
+                $result = INT_A;
+                break;
+                
+            case self::STRING_B_LONG:
+                $result = INT_B;
+                break;
+        }
+        
+        return $result;
     }
 
     /**
@@ -116,51 +181,12 @@ class Singleton {
      * @param mixed $time24Hour
      */
     public function regexTest($time24Hour): bool {
-        $time24Hour = preg_replace('/[^0-9\:]/', '', $time24Hour); //sanitize
-
-        return preg_match('/([01]?[0-9]|2[0-3])(:[0-5][0-9]:[0-5][0-9]|:[0-5][0-9])/', $time24Hour); //validate
-    }
-
-    /**
-     * validate User-provided name
-     * pattern validate alphanumeric with spaces.
-     *
-     * @param string $name User-provided name
-     */
-    private function validateName($name) {
-        return
-            filter_var($name, FILTER_VALIDATE_REGEXP, [
-                'options' => ['regexp' => '/[a-zA-Z1-9 ]+/'],
-            ]);
-    }
-
-    /**
-     * validate User-provided name
-     * pattern validate alphanumeric with spaces.
-     *
-     * @param string $name User-provided name
-     * @param mixed  $path
-     */
-    private function validateFilePath($path)
-    {
-        clearstatcache(); //clearing cache before checking
-        if (false === strpos($path, "\0")
-        && file_exists($path)) {
-            $path = realpath($path);
-            //do directory validation here as per scenario
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * santize User-provided name
-     * pattern sanitize alphanumeric with comma and single colon.
-     *
-     * @param string $name User-provided name
-     */
-    private function sanitizeName($name): string {
-        return preg_replace('/[^a-zA-Z1-9 ]+/', '', strip_tags(trim($name)));
+        // No need to sanitize further, a regex will do
+        // [0-9] is equivalent to \d
+        // 0 left padding - so [01]\d instead of [01]?\d (02:00 instead of 2:00)
+        // DRY - don't repeat yourself, the 00-59 minute/second block can appear once or twice
+        // Don't use capturing blocks if you don't need them - (?:) instead of ()
+        // preg_match returns 0,1 or false; expected return value is boolean
+        return !!preg_match('#^(?:[01]\d|2[0-3])(?:\:[0-5]\d){1,2}$#', $time24Hour);
     }
 }
